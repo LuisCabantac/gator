@@ -36,7 +36,7 @@ func handlerRegister(s *state, cmd command) error {
 	}
 	name := cmd.Args[0]
 
-	user, err := s.db.CreateUser(context.Background(), database.CreateUserParams{
+	_, err := s.db.CreateUser(context.Background(), database.CreateUserParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -51,7 +51,6 @@ func handlerRegister(s *state, cmd command) error {
 		return fmt.Errorf("couldn't set current user: %w", err)
 	}
 
-	fmt.Printf("User registered successfully! %+v", user)
 	return nil
 }
 
