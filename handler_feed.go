@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/LuisCabantac/gator/internal/database"
@@ -102,6 +103,34 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
+func handlerBrowse(s *state, cmd command, user database.User) error {
+	ctx := context.Background()
+
+	length := 2
+
+	if len(cmd.Args) > 1 {
+		rawLength := cmd.Args[0]
+		inputLength, err := strconv.Atoi(rawLength)
+		if err == nil || inputLength < 1 {
+			length = inputLength
+		}
+	}
+
+	posts, err := s.db.GetPostsForUser(ctx, database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  int32(length),
+	})
+	if err != nil {
+		return fmt.Errorf("couldn't get posts: %w", err)
+	}
+
+	for _, post := range posts {
+		fmt.Printf("%+v\n", post)
+	}
+
+	return nil
+}
+
 func scrapeFeeds(s *state) error {
 	ctx := context.Background()
 	nextFeed, err := s.db.GetNextFeedToFetch(ctx)
@@ -118,8 +147,27 @@ func scrapeFeeds(s *state) error {
 	if err != nil {
 		return err
 	}
+
 	for _, f := range feed.Channel.Item {
-		fmt.Println(f.Title)
+		publishedAt, err := time.Parse(time.RFC1123Z, f.PubDate)
+		if err != nil {
+			continue
+		}
+
+		_, err = s.db.CreatePost(ctx, database.CreatePostParams{
+			ID:          uuid.New(),
+			PublishedAt: publishedAt,
+			Title:       f.Title,
+			Url:         f.Link,
+			Description: f.Description,
+			FeedID: uuid.NullUUID{
+				UUID:  nextFeed.ID,
+				Valid: true,
+			},
+		})
+		if err != nil {
+			continue
+		}
 	}
 
 	return nil
