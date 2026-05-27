@@ -3,26 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/LuisCabantac/gator/internal/database"
 	"github.com/google/uuid"
 )
 
-func handlerFollow(s *state, cmd command) error {
+func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 1 {
 		return fmt.Errorf("usage: %s <url>", cmd.Name)
 	}
 	url := cmd.Args[0]
 
 	ctx := context.Background()
-
-	currentUser := s.cfg.CurrentUserName
-	user, err := s.db.GetUser(ctx, currentUser)
-	if err != nil {
-		return fmt.Errorf("couldn't get user: %w", err)
-	}
 
 	feed, err := s.db.GetFeedByURL(ctx, url)
 	if err != nil {
@@ -57,14 +50,8 @@ func handlerFollow(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
+func handlerFollowing(s *state, cmd command, user database.User) error {
 	ctx := context.Background()
-	currentUser := s.cfg.CurrentUserName
-
-	user, err := s.db.GetUser(ctx, currentUser)
-	if err != nil {
-		return fmt.Errorf("couldn't get user: %w", err)
-	}
 
 	feedFollows, err := s.db.GetFeedFollowsForUser(ctx, user.ID)
 	if err != nil {
@@ -91,19 +78,13 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 2 {
 		return fmt.Errorf("usage: %s <name> <url>", cmd.Name)
 	}
 	name := cmd.Args[0]
 	url := cmd.Args[1]
 	ctx := context.Background()
-	currentUser := s.cfg.CurrentUserName
-
-	user, err := s.db.GetUser(ctx, currentUser)
-	if err != nil {
-		os.Exit(1)
-	}
 
 	feed, err := s.db.CreateFeed(ctx, database.CreateFeedParams{
 		ID:        uuid.New(),
