@@ -102,6 +102,29 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
+func scrapeFeeds(s *state) error {
+	ctx := context.Background()
+	nextFeed, err := s.db.GetNextFeedToFetch(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = s.db.MarkFeedFetched(ctx, nextFeed.ID)
+	if err != nil {
+		return err
+	}
+
+	feed, err := fetchFeed(ctx, nextFeed.Url)
+	if err != nil {
+		return err
+	}
+	for _, f := range feed.Channel.Item {
+		fmt.Println(f.Title)
+	}
+
+	return nil
+}
+
 func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 2 {
 		return fmt.Errorf("usage: %s <name> <url>", cmd.Name)
@@ -121,8 +144,6 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if err != nil {
 		return fmt.Errorf("couldn't add feed: %w", err)
 	}
-
-	fmt.Println(feed, user)
 
 	_, err = s.db.CreateFeedFollow(ctx, database.CreateFeedFollowParams{
 		ID:        uuid.New(),
